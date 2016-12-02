@@ -160,91 +160,161 @@ class:small-code
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
+TensorFlow
+========================================================
+class:small-code
+
+&nbsp;
+
+AI library open sourced by Google
+
+> "If you can express your computation as a data flow graph, you can use TensorFlow."
+
+&nbsp;
+
+- implemented in C++, with C++ and Python APIs
+- computations are graphs
+- nodes are operations
+- edges specify input to / output from operations - the _Tensors_ (multidimensional matrices) 
+- the graph is just a spec - to make anything happen, execute it in a Session
+- a Session places and runs a graph on a Device (GPU, CPU)
+
+  
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+TensorFlow in R
+========================================================
+class:small-code
+
+&nbsp;
+
+tensorflow R package: [Installation guide and tutorials](https://rstudio.github.io/tensorflow/)  
+
+```{r}
+library(tensorflow)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST with TensorFlow: Load data and declare placeholders
 ========================================================
 class:small-code
 
 &nbsp;
   
+```{r}
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+
+# images are 55000 * 784
+x <- tf$placeholder(tf$float32, shape(NULL, 784L))
+# labels are 55000 * 10
+y_ <- tf$placeholder(tf$float32, shape(NULL, 10L))
+```
 
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
+First, a shallow neural network
 ========================================================
 class:small-code
 
 &nbsp;
-  
+
+<figure>  
+<img src='shallow_net.png' border=0 width='40%' />
+<img src='shallow_net2.png' border=0 width='50%' style='margin-left: 1 00px;'/>
+<figcaption>From: <a href='https://www.tensorflow.org/versions/r0.11/tutorials/mnist/beginners/index.html'>TensorFlow tutorial</a>
+</figcaption>
+</figure>
+
+
+&nbsp;
+ 
+- no hidden layers, just input layer and output layer
+- softmax activation function
 
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
+Shallow network: Configuration
 ========================================================
 class:small-code
 
 &nbsp;
   
+```{r}
+# weight matrix is 784 * 10
+W <- tf$Variable(tf$zeros(shape(784L, 10L)))
+# bias is 10 * 1
+b <- tf$Variable(tf$zeros(shape(10L)))
+# initialize variables
+
+# y_hat
+y <- tf$nn$softmax(tf$matmul(x,W) + b)
+# loss function
+cross_entropy <- tf$reduce_mean(-tf$reduce_sum(y_ * tf$log(y), reduction_indices=1L))
+# specify optimization method and step size
+optimizer <- tf$train$GradientDescentOptimizer(0.5)
+train_step <- optimizer$minimize(cross_entropy)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Shallow network: training
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r}
+sess = tf$Session()
+sess$run(tf$initialize_all_variables())
+
+for (i in 1:1000) {
+  batches <- mnist$train$next_batch(100L)
+  batch_xs <- batches[[1]]
+  batch_ys <- batches[[2]]
+  sess$run(train_step, feed_dict = dict(x = batch_xs, y_ = batch_ys))
+}
+```
 
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
+Shallow Network: evaluate
 ========================================================
 class:small-code
 
 &nbsp;
-  
 
+```{r}  
+correct_prediction <- tf$equal(tf$argmax(y, 1L), tf$argmax(y_, 1L))
+accuracy <- tf$reduce_mean(tf$cast(correct_prediction, tf$float32))
+
+# actually evaluate training accuracy
+sess$run(accuracy, feed_dict=dict(x = mnist$train$images, y_ = mnist$train$labels))
+# and test accuracy
+sess$run(accuracy, feed_dict=dict(x = mnist$test$images, y_ = mnist$test$labels))
+```
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-MNIST
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-MNIST
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-MNIST
+Getting in deeper: convnets (convolutional neural networks)
 ========================================================
 class:small-code
 
