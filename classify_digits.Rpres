@@ -1,0 +1,259 @@
+```{r setup, include=FALSE}
+opts_chunk$set(cache=TRUE)
+```
+<style>
+.small-code pre code {
+  font-size: 1em;
+}
+.midcenter {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+}
+.footer {
+    position: fixed; 
+    top: 90%;
+    text-align:right; 
+    width:90%;
+    margin-top:-150px;
+}
+.reveal section img {
+  border: 0px;
+  box-shadow: 0 0 0 0;
+}
+</style>
+
+
+
+3 - 2 - 1 - 0: Classifying Digits with R
+========================================================
+width: 1440
+incremental:true 
+R for SQListas, a Continuation
+
+
+R for SQListas: Now that we're in the tidyverse ...
+========================================================
+class:small-code
+
+&nbsp;
+  
+... what can we do now?
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Machine Learning
+========================================================
+class:small-code
+
+&nbsp;
+  
+MNIST - the "Drosophila of Machine Learning"
+(attributed to Geoffrey Hinton)
+
+<img src='mnist.png' border=0 width='100% '>
+
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+- download from [Yann LeCun's website](http://yann.lecun.com/exdb/mnist/)  
+- where you also find the "shootout of classifiers" ...
+
+<img src='mnist_perf.png' border=0 width='50% '>
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+The data
+========================================================
+class:small-code
+
+&nbsp;
+
+Use the R tensorflow library to load the data.  
+Explanations, later ;-)
+  
+```{r}
+library(tensorflow)
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+
+train_images <- mnist$train$images
+train_labels <- mnist$train$labels
+
+label_1 <- train_labels[1,]
+image_1 <- train_images[1,]
+
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Images and labels
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r}
+label_1 
+```
+
+```{r}
+length(image_1) 
+```
+
+```{r}
+image_1[200:300] 
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Example images
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r, fig.width=18, fig.height=5, fig.show='hold', fig.align='center'}  
+grayscale <- colorRampPalette(c('white','black'))
+par(mar=c(1,1,1,1), mfrow=c(8,8),pty='s',xaxt='n',yaxt='n')
+
+for(i in 1:40) 
+{
+  z<-array(train_images[i,],dim=c(28,28))
+  z<-z[,28:1] ##right side up
+  image(1:28,1:28,z,main=which.max(train_labels[i,])-1,col=grayscale(256), , xlab="", ylab="")
+}
+
+```
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
