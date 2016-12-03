@@ -314,6 +314,8 @@ sess$run(accuracy, feed_dict=dict(x = mnist$test$images, y_ = mnist$test$labels)
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
+
+
 Getting in deeper: convnets (convolutional neural networks)
 ========================================================
 class:small-code
@@ -327,3 +329,298 @@ class:small-code
 </div>
 
 
+Layer 1: convolution and ReLU (1)
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r} 
+#  template to initialize weights with a small amount of noise for symmetry breaking and to prevent 0 gradients
+weight_variable <- function(shape) {
+  initial <- tf$truncated_normal(shape, stddev=0.1)
+  tf$Variable(initial)
+}
+#  template to initialize bias to small positive value to avoid "dead neurons" 
+bias_variable <- function(shape) {
+  initial <- tf$constant(0.1, shape=shape)
+  tf$Variable(initial)
+}
+
+# compute 32 feature maps for each 5x5 patch
+# we have just 1 channel
+# so weights shape is: height, width, number of input channels, number of output channels
+W_conv1 <- weight_variable(shape(5L, 5L, 1L, 32L))
+# shape for bias: number of output channels
+b_conv1 <- bias_variable(shape(32L))
+
+# reshape x from 2d to 4d tensor with dimensions batch size, width, height, number of color channels
+x_image <- tf$reshape(x, shape(-1L, 28L, 28L, 1L))
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 1: convolution and ReLU (2)
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r} 
+# template to define convolutional layer
+# tf$nn$conv2d parameters: input tensor, kernel tensor, strides, padding
+# input tensor has shape [batch size, in_height, in_width, in_channels] (NHWC)
+# kernel tensor has shape [filter_height, filter_width, in_channels, out_channels]
+conv2d <- function(x, W) {
+  tf$nn$conv2d(x, W, strides=c(1L, 1L, 1L, 1L), padding='SAME')
+}
+# perform convolution and ReLU activation
+# output shape is batch size, 28, 28, 32
+h_conv1 <- tf$nn$relu(conv2d(x_image, W_conv1) + b_conv1)
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 2: Max pooling
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# template to define max pooling over 2x2 regions
+max_pool_2x2 <- function(x) {
+  tf$nn$max_pool(
+    x, 
+    ksize=c(1L, 2L, 2L, 1L),
+    strides=c(1L, 2L, 2L, 1L), 
+    padding='SAME')
+}
+
+# output shape is batch size , 14, 14, 32
+h_pool1 <- max_pool_2x2(h_conv1)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 3: convolution and ReLU 
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r} 
+# next feature map is 5*5, takes 32 channels, produces 64 channels - size weights accordingly
+W_conv2 <- weight_variable(shape = shape(5L, 5L, 32L, 64L))
+b_conv2 <- bias_variable(shape = shape(64L))
+# shape is ?, 14, 14, 64
+h_conv2 <- tf$nn$relu(conv2d(h_pool1, W_conv2) + b_conv2)
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 4: Max pooling
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# output shape is batch size, 7, 7, 64
+h_pool2 <- max_pool_2x2(h_conv2)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 5: Densely connected layer
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# bring together all feature maps
+# weights shape: 3136, 1024 (fully connected)
+W_fc1 <- weight_variable(shape(7L * 7L * 64L, 1024L))
+b_fc1 <- bias_variable(shape(1024L))
+# reshape input: batch size, 3136
+h_pool2_flat <- tf$reshape(h_pool2, shape(-1L, 7L * 7L * 64L))
+
+# matrix multiply and ReLU
+# new shape: batch size, 1024
+h_fc1 <- tf$nn$relu(tf$matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+#dropout
+keep_prob <- tf$placeholder(tf$float32)
+# shape: ?, 1024
+h_fc1_drop <- tf$nn$dropout(h_fc1, keep_prob)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 5: Softmax
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+W_fc2 <- weight_variable(shape(1024L, 10L))
+b_fc2 <- bias_variable(shape(10L))
+# output shape: batch size, 10
+y_conv <- tf$nn$softmax(tf$matmul(h_fc1_drop, W_fc2) + b_fc2)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+CNN: Define loss function and optimization algorithm
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+cross_entropy <- tf$reduce_mean(-tf$reduce_sum(y_ * tf$log(y_conv), reduction_indices=1L))
+train_step <- tf$train$AdamOptimizer(1e-4)$minimize(cross_entropy)
+correct_prediction <- tf$equal(tf$argmax(y_conv, 1L), tf$argmax(y_, 1L))
+accuracy <- tf$reduce_mean(tf$cast(correct_prediction, tf$float32))
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+CNN: Train network
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+sess$run(tf$initialize_all_variables())
+
+for (i in 1:20000) {
+  batch <- mnist$train$next_batch(50L)
+  if (i %% 100 == 0) {
+    train_accuracy <- accuracy$eval(feed_dict = dict(
+      x = batch[[1]], y_ = batch[[2]], keep_prob = 1.0))
+    cat(sprintf("step %d, training accuracy %g\n", i, train_accuracy))
+  }
+  train_step$run(feed_dict = dict(
+    x = batch[[1]], y_ = batch[[2]], keep_prob = 0.5))
+}
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+CNN: Accuracy
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+train_accuracy <- accuracy$eval(feed_dict = dict(
+  x = mnist$train$images, y_ = mnist$train$labels, keep_prob = 1.0))
+cat(sprintf("train accuracy %g", train_accuracy))
+
+test_accuracy <- accuracy$eval(feed_dict = dict(
+  x = mnist$test$images, y_ = mnist$test$labels, keep_prob = 1.0))
+cat(sprintf("test accuracy %g", test_accuracy))
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Getting in deeper: convnets (convolutional neural networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+
+Getting in deeper: convnets (convolutional neural networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+
+Getting in deeper: convnets (convolutional neural networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Getting in deeper: convnets (convolutional neural networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Getting in deeper: convnets (convolutional neural networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
