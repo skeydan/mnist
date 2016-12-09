@@ -53,7 +53,7 @@ class:small-code
 MNIST - the "Drosophila of Machine Learning"
 (attributed to Geoffrey Hinton)
 
-<img src='mnist.png' border=0 width='100% '>
+<img src='mnist.png' border=0 width='80% '>
 
  
 <div class="footer">
@@ -66,11 +66,12 @@ MNIST
 class:small-code
 
 &nbsp;
-  
+
+- 60.000 train and 10.000 test examples of handwritten digits, 28x28 px  
 - download from [Yann LeCun's website](http://yann.lecun.com/exdb/mnist/)  
 - where you also find the "shootout of classifiers" ...
 
-<img src='mnist_perf.png' border=0 width='50% '>
+<img src='mnist_perf.png' border=0 width='65% '>
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
@@ -118,7 +119,7 @@ length(image_1)
 ```
 
 ```{r}
-image_1[200:300] 
+image_1[250:300] 
 ```
 
 <div class="footer">
@@ -148,13 +149,38 @@ for(i in 1:40)
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-MNIST
+Classifying digits, try 1: Linear classifiers
 ========================================================
 class:small-code
 
 &nbsp;
-  
 
+Are my data linearly separable?
+
+```{r, fig.width=10, fig.height=5, fig.show='hold', fig.align='left', echo=FALSE}  
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(gridExtra)
+
+# the separator line is: 2x + 5y -2 = 0
+
+x <- runif(10, min=0, max=1)
+y <- runif(10, min=0, max=1)
+z <- as_vector(map2(x, y, function(x,y) {2*x + 5*y - 2}))
+# positive sign is one class, negative the other
+z_sgn <- sign(z)
+z_random <- sample(z_sgn)
+
+df <- data_frame(x,y,z,z_sgn)
+
+g1 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_sgn))) + 
+  geom_abline(slope=-0.4, intercept=0.4, linetype = 'dashed') +
+  coord_fixed() + theme (legend.position = "none") 
+g2 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_random))) +
+  coord_fixed() + theme (legend.position = "none") 
+grid.arrange(g1,g2,ncol=2)
+```
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
