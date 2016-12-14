@@ -5,7 +5,8 @@ library(tensorflow)
 library(MASS)
 library(dplyr)
 library(caret)
-require( 'kernlab' )
+library(kernlab)
+library(class)
 
 #######################################
 # Linearly separable data illustrated #
@@ -50,7 +51,7 @@ y_test[1:10]
 #######################################
 #                LDA                  #
 #######################################
-# http://sebastianraschka.com/Articles/2014_python_lda.html
+
 # https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Classification/SVM
 # http://www.ats.ucla.edu/stat/r/dae/mlogit.htm
 # http://cbio.mines-paristech.fr/~pchiche/teaching/mlbio/mlbio_2012.R
@@ -71,7 +72,7 @@ ncol(X_test)
 
 lda_fit <- lda(X_train, y_train)
 
-lda_pred <- predict(lda_fit, X_test[1,])
+lda_pred <- predict(lda_fit, X_test[1:10,])
 lda_pred
 
 lda_pred <- predict(lda_fit, X_test)
@@ -85,14 +86,90 @@ sum(diag(prop.table(ct)))
 #######################################
 #          Linear SVM                 #
 #######################################
-#linear.svm <- ksvm( y ~ ., data=linear.train, type='C-svc', kernel='vanilladot',
-                    C=100, scale=c() )
 
-# Plot the model
-#plot( linear.svm, data=linear.train )
+#X_train = X_train[1:10000,]
+#y_train = y_train[1:10000]
+svm_fit_linear <- ksvm(x = X_train, y = y_train, type='C-svc',
+                       kernel='vanilladot', C=1, scale=FALSE)
 
 # Predictions for test set
-#linear.prediction <- predict( linear.svm, linear.test )
+svm_pred <- predict(svm_fit_linear, X_test[1:10,])
+svm_pred
+svm_pred <- predict(svm_fit_linear, X_test)
 
-# Prediction scores
-#linear.prediction.score <- predict( linear.svm, linear.test, type='decision' )
+ct <- table(svm_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) #0.9393
+
+# regulalization
+svm_fit_linear <- ksvm(x = X_train, y = y_train, type='C-svc',
+                       kernel='vanilladot', C=100, scale=FALSE)
+
+# Predictions for test set
+svm_pred <- predict(svm_fit_linear, X_test[1:10,])
+svm_pred
+svm_pred <- predict(svm_fit_linear, X_test)
+
+ct <- table(svm_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) 
+
+
+#######################################
+#          Nonlinear SVM              #
+#######################################
+
+svm_fit_rbf <- ksvm(x = X_train, y = y_train, type='C-svc',
+                    kernel='rbf', C=1, scale=FALSE)
+
+# Predictions for test set
+svm_pred <- predict(svm_fit_rbf, X_test[1:10,])
+svm_pred
+svm_pred <- predict(svm_fit_rbf, X_test)
+
+ct <- table(svm_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) 
+
+
+
+#######################################
+#          knn                        #
+#######################################
+knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=1)
+knn_pred
+ct <- table(knn_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) 
+
+knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=3)
+knn_pred
+ct <- table(knn_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) 
+
+knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=10)
+knn_pred
+ct <- table(knn_pred, y_test)
+ct
+# percent correct for each category 
+diag(prop.table(ct, 1))
+# total percent correct
+sum(diag(prop.table(ct))) 
+
+
