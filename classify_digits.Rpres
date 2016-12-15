@@ -21,7 +21,7 @@ opts_chunk$set(cache=TRUE)
   border: 0px;
   box-shadow: 0 0 0 0;
 }
-</style>
+</style> 
 
 
 
@@ -314,7 +314,7 @@ class:small-code
 datasets <- tf$contrib$learn$datasets
 mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
 library(kernlab)
-```
+``` 
 
 ```{r}
 # fit the model
@@ -796,22 +796,22 @@ accuracy <- tf$reduce_mean(tf$cast(correct_prediction, tf$float32))
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
-
+ 
 CNN: Train network
 ========================================================
 class:small-code
 
 &nbsp;
 
-```{r} 
+```{r, echo=FALSE} 
 sess = tf$InteractiveSession()
 sess$run(tf$initialize_all_variables())
 ```
-ll 
+
 ```{r} 
-for (i in 1:20000) {
+for (i in 1:2000) {
   batch <- mnist$train$next_batch(50L)
-  if (i %% 100 == 0) {
+  if (i %% 250 == 0) {
     train_accuracy <- accuracy$eval(feed_dict = dict(
       x = batch[[1]], y_ = batch[[2]], keep_prob = 1.0))
     cat(sprintf("step %d, training accuracy %g\n", i, train_accuracy))
@@ -824,90 +824,36 @@ for (i in 1:20000) {
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
-
-CNN: Accuracy
+ 
+CNN: Accuracy on test set
 ========================================================
 class:small-code
 
 &nbsp;
-  
-```{r} 
-train_accuracy <- accuracy$eval(feed_dict = dict(
-  x = mnist$train$images, y_ = mnist$train$labels, keep_prob = 1.0))
-cat(sprintf("train accuracy %g", train_accuracy))
 
+```{r} 
 test_accuracy <- accuracy$eval(feed_dict = dict(
-  x = mnist$test$images, y_ = mnist$test$labels, keep_prob = 1.0))
-cat(sprintf("test accuracy %g", test_accuracy))
+     x = mnist$test$images, y_ = mnist$test$labels, keep_prob = 1.0))
+cat(sprintf("test accuracy %g", train_accuracy))
 ```
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
+ 
 
-
-Getting in deeper: convnets (convolutional neural networks)
+Now could play around with the configuration to get even higher accuracy ... 
 ========================================================
 class:small-code
 
 &nbsp;
   
+... but that will have to be another time ...
 
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-
-
-Getting in deeper: convnets (convolutional neural networks)
-========================================================
-class:small-code
-
-&nbsp;
-  
-
+Thanks for your attention!!
 
 <div class="footer">
 <img src='cube3.png' border=0 width='122px'>
 </div>
 
-
-
-Getting in deeper: convnets (convolutional neural networks)
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-
-Getting in deeper: convnets (convolutional neural networks)
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
-
-
-Getting in deeper: convnets (convolutional neural networks)
-========================================================
-class:small-code
-
-&nbsp;
-  
-
-
-<div class="footer">
-<img src='cube3.png' border=0 width='122px'>
-</div>
+ 
