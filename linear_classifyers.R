@@ -13,7 +13,7 @@ library(class)
 #######################################
 
 
-# the separator line is: 2x + 5y -2 = 0
+# the separating hyperplane is: 2x + 5y -2 = 0
 
 x <- runif(10, min=0, max=1)
 y <- runif(10, min=0, max=1)
@@ -104,9 +104,9 @@ diag(prop.table(ct, 1))
 # total percent correct
 sum(diag(prop.table(ct))) #0.9393
 
-# regulalization
+# regularization
 svm_fit_linear <- ksvm(x = X_train, y = y_train, type='C-svc',
-                       kernel='vanilladot', C=100, scale=FALSE)
+                       kernel='vanilladot', C=10, scale=FALSE)
 
 # Predictions for test set
 svm_pred <- predict(svm_fit_linear, X_test[1:10,])
@@ -140,36 +140,5 @@ diag(prop.table(ct, 1))
 # total percent correct
 sum(diag(prop.table(ct))) 
 
-
-
-#######################################
-#          knn                        #
-#######################################
-knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=1)
-knn_pred
-ct <- table(knn_pred, y_test)
-ct
-# percent correct for each category 
-diag(prop.table(ct, 1))
-# total percent correct
-sum(diag(prop.table(ct))) 
-
-knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=3)
-knn_pred
-ct <- table(knn_pred, y_test)
-ct
-# percent correct for each category 
-diag(prop.table(ct, 1))
-# total percent correct
-sum(diag(prop.table(ct))) 
-
-knn_pred <- knn(train = X_train, test = X_test, cl=y_train, k=10)
-knn_pred
-ct <- table(knn_pred, y_test)
-ct
-# percent correct for each category 
-diag(prop.table(ct, 1))
-# total percent correct
-sum(diag(prop.table(ct))) 
 
 
