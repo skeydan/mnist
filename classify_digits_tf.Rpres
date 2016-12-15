@@ -1,0 +1,857 @@
+```{r setup, include=FALSE}
+opts_chunk$set(cache=TRUE)
+```
+<style>
+.small-code pre code {
+  font-size: 1em;
+} 
+.midcenter {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+}
+.footer {
+    position: fixed; 
+    top: 90%;
+    text-align:right; 
+    width:90%;
+    margin-top:-150px;
+}
+.reveal section img {
+  border: 0px;
+  box-shadow: 0 0 0 0;
+}
+</style> 
+
+3 - 2 - 1 - 0: Classifying Digits with R
+========================================================
+width: 1440
+incremental:true 
+R for SQListas, a Continuation
+
+
+R for SQListas: Now that we're in the tidyverse ...
+========================================================
+class:small-code
+
+&nbsp;
+  
+... what can we do now?
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Machine Learning
+========================================================
+class:small-code
+
+&nbsp;
+  
+MNIST - the "Drosophila of Machine Learning"
+(attributed to Geoffrey Hinton)
+
+<img src='mnist.png' border=0 width='80% '>
+
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+MNIST
+========================================================
+class:small-code
+
+&nbsp;
+
+- 60.000 train and 10.000 test examples of handwritten digits, 28x28 px  
+- download from [Yann LeCun's website](http://yann.lecun.com/exdb/mnist/)  
+- where you also find the "shootout of classifiers" ...
+
+<img src='mnist_perf.png' border=0 width='65% '>
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+The data
+========================================================
+class:small-code
+
+&nbsp;
+
+Use the R tensorflow library to load the data.  
+Explanations, later ;-)
+  
+```{r}
+library(tensorflow)
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+
+train_images <- mnist$train$images
+train_labels <- mnist$train$labels
+
+label_1 <- train_labels[1,]
+image_1 <- train_images[1,]
+
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Images and labels
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r}
+label_1 
+```
+
+```{r}
+length(image_1) 
+```
+
+```{r}
+image_1[250:300] 
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Example images
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r, fig.width=18, fig.height=5, fig.show='hold', fig.align='center'}  
+grayscale <- colorRampPalette(c('white','black'))
+par(mar=c(1,1,1,1), mfrow=c(8,8),pty='s',xaxt='n',yaxt='n')
+
+for(i in 1:40) 
+{
+  z<-array(train_images[i,],dim=c(28,28))
+  z<-z[,28:1] ##right side up
+  image(1:28,1:28,z,main=which.max(train_labels[i,])-1,col=grayscale(256), , xlab="", ylab="")
+}
+
+```
+ 
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Classifying digits, try 1: Linear classifiers
+========================================================
+class:small-code
+
+&nbsp;
+
+Are my data linearly separable?
+
+```{r, fig.width=10, fig.height=5, fig.show='hold', fig.align='left', echo=FALSE}  
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(gridExtra)
+
+# the separator line is: 2x + 5y -2 = 0
+
+x <- runif(10, min=0, max=1)
+y <- runif(10, min=0, max=1)
+z <- as_vector(map2(x, y, function(x,y) {2*x + 5*y - 2}))
+# positive sign is one class, negative the other
+z_sgn <- sign(z)
+z_random <- sample(z_sgn)
+
+df <- data_frame(x,y,z,z_sgn)
+
+g1 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_sgn))) + 
+  geom_abline(slope=-0.4, intercept=0.4, linetype = 'dashed') +
+  coord_fixed() + theme (legend.position = "none") 
+g2 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_random))) +
+  coord_fixed() + theme (legend.position = "none") 
+grid.arrange(g1,g2,ncol=2)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Maximizing between-class variance: Linear discriminant analysis (LDA)
+========================================================
+class:small-code
+
+&nbsp;
+
+<figure> 
+<figcaption>LDA works by maximizing variance between classes.</figcaption>
+<img src='lda.png' border=0 width='25%'>
+<figcaption style='font-size: 0.7em;'>Source: http://sebastianraschka.com/Articles/2014_python_lda.html</figcaption>
+</figure>
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Trying a linear classifier: Linear discriminant analysis (LDA)
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r, echo=FALSE}
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+
+library(MASS)
+library(caret)
+
+X_train <- mnist$train$images
+y_train <- mnist$train$labels
+y_train <- apply(y_train, 1, function(r) { which.max(r) - 1 })
+
+X_test <- mnist$test$images
+y_test <- mnist$test$labels
+y_test <- apply(y_test, 1, function(r) { which.max(r) - 1 })
+
+# remove columns with all zeros
+z = nearZeroVar(X_train, saveMetrics = TRUE)
+X_train <- X_train[,z$zeroVar==FALSE]
+X_test <- X_test[,z$zeroVar==FALSE]
+
+```
+```{r}
+# fit the model
+lda_fit <- lda(X_train, y_train)
+
+# model predictions for the test set
+lda_pred <- predict(lda_fit, X_test)
+
+# prediction accuracy
+ct <- table(lda_pred$class, y_test)
+sum(diag(prop.table(ct)))
+```
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Toward the (linear) SVM: Maximizing the margin (1)
+========================================================
+class:small-code
+
+&nbsp;
+
+<figure>
+<figcaption>For linearly separable data, there are infinitely many ways to fit a separating line</figcaption>
+<img src='svm1.png' border=0 width='30%'>
+<figcaption style='font-size: 0.7em;'>Source: G. James, D. Witten,  T. Hastie and R. Tibshirani, An Introduction to Statistical Learning, with applications in R</figcaption>
+</figure>
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+
+Toward the (linear) SVM: Maximizing the margin (2)
+========================================================
+class:small-code
+
+&nbsp;
+
+
+
+<figure>
+<figcaption>Redefine task: Maximal margin</figcaption>
+<img src='svm2.png' border=0 width='30%'>
+<figcaption style='font-size: 0.7em;'>Source: G. James, D. Witten,  T. Hastie and R. Tibshirani, An Introduction to Statistical Learning, with applications in R</figcaption>
+</figure>
+
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+
+Allowing for misclassification: Support Vector Classifier
+========================================================
+class:small-code
+
+&nbsp;
+
+
+
+<figure>
+<figcaption>Why allow for misclassifications?</figcaption>
+<img src='svm3.png' border=0 width='30%'>
+<figcaption style='font-size: 0.7em;'>Source: G. James, D. Witten,  T. Hastie and R. Tibshirani, An Introduction to Statistical Learning, with applications in R</figcaption>
+</figure>
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+
+Support Vector Classifier: Linear SVM
+========================================================
+class:small-code
+
+&nbsp;
+ 
+```{r, echo=FALSE}
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+library(kernlab)
+``` 
+
+```{r}
+# fit the model
+svm_fit_linear <- ksvm(x = X_train, y = y_train, type='C-svc', kernel='vanilladot', C=1, scale=FALSE)
+
+# model predictions for the test set
+svm_pred <- predict(svm_fit_linear, X_test)
+
+# prediction accuracy
+ct <- table(svm_pred, y_test)
+sum(diag(prop.table(ct)))
+```
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+Going nonlinear: Support Vector Machine (1)
+========================================================
+class:small-code
+
+&nbsp;
+
+
+<figure>
+<figcaption>Why a linear classifier isn't enough</figcaption>
+<img src='svm5.png' border=0 width='20%'>
+<figcaption style='font-size: 0.7em;'>Source: G. James, D. Witten,  T. Hastie and R. Tibshirani, An Introduction to Statistical Learning, with applications in R</figcaption>
+
+</figure>
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+
+Going nonlinear: Support Vector Machine (2)
+========================================================
+class:small-code
+
+&nbsp;
+
+
+
+<figure>
+<figcaption>Non-linear kernels (polynomial resp. radial)</figcaption>
+<img src='svm6.png' border=0 width='20%'>
+<figcaption style='font-size: 0.7em;'>Source: G. James, D. Witten,  T. Hastie and R. Tibshirani, An Introduction to Statistical Learning, with applications in R</figcaption>
+</figure>
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+  
+Support Vector Machine: RBF kernel
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r}
+# fit the model
+svm_fit_rbf <- ksvm(x = X_train, y = y_train, type='C-svc', kernel='rbf', C=1, scale=FALSE)
+
+# model predictions for the test set
+svm_pred <- predict(svm_fit_rbf, X_test)
+
+# prediction accuracy
+ct <- table(svm_pred, y_test)
+sum(diag(prop.table(ct)))
+```
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+Can this get any better?
+========================================================
+class:small-code
+
+&nbsp;
+
+Let's try neural networks!
+
+<div class="footer">
+  <img src='cube3.png' border=0 width='122px'>
+  </div>
+
+TensorFlow
+========================================================
+class:small-code
+
+&nbsp;
+
+AI library open sourced by Google
+
+> "If you can express your computation as a data flow graph, you can use TensorFlow."
+
+- implemented in C++, with C++ and Python APIs
+- computations are graphs
+- nodes are operations
+- edges specify input to / output from operations - the _Tensors_ (multidimensional matrices) 
+- the graph is just a spec - to make anything happen, execute it in a Session
+- a Session places and runs a graph on a Device (GPU, CPU)
+
+  
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+TensorFlow in R
+========================================================
+class:small-code
+
+&nbsp;
+
+tensorflow R package: [Installation guide and tutorials](https://rstudio.github.io/tensorflow/)  
+
+Let's get started!
+```{r}
+library(tensorflow)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+MNIST with TensorFlow: Load data and declare placeholders
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r}
+datasets <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+
+# images are 55000 * 784
+x <- tf$placeholder(tf$float32, shape(NULL, 784L))
+# labels are 55000 * 10
+y_ <- tf$placeholder(tf$float32, shape(NULL, 10L))
+```
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+First, a shallow neural network
+========================================================
+class:small-code
+
+&nbsp;
+
+<figure>  
+<img src='shallow_net.png' border=0 width='40%' />
+<img src='shallow_net2.png' border=0 width='50%' style='margin-left: 1 00px;'/>
+<figcaption style='font-size: 0.7em;'>From: <a href='https://www.tensorflow.org/versions/r0.11/tutorials/mnist/beginners/index.html'>TensorFlow tutorial</a>
+</figcaption>
+</figure>
+
+&nbsp;
+
+- no hidden layers, just input layer and output layer
+- softmax activation function
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Shallow network: Configuration
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r}
+# weight matrix is 784 * 10
+W <- tf$Variable(tf$zeros(shape(784L, 10L)))
+# bias is 10 * 1
+b <- tf$Variable(tf$zeros(shape(10L)))
+# initialize variables
+
+# y_hat
+y <- tf$nn$softmax(tf$matmul(x,W) + b)
+# loss function
+cross_entropy <- tf$reduce_mean(-tf$reduce_sum(y_ * tf$log(y), reduction_indices=1L))
+# specify optimization method and step size
+optimizer <- tf$train$GradientDescentOptimizer(0.5)
+train_step <- optimizer$minimize(cross_entropy)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Shallow network: Training
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r}
+sess = tf$InteractiveSession()
+sess$run(tf$initialize_all_variables())
+
+for (i in 1:1000) {
+  batches <- mnist$train$next_batch(100L)
+  batch_xs <- batches[[1]]
+  batch_ys <- batches[[2]]
+  sess$run(train_step, feed_dict = dict(x = batch_xs, y_ = batch_ys))
+}
+```
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Shallow Network: Evaluate
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r}  
+correct_prediction <- tf$equal(tf$argmax(y, 1L), tf$argmax(y_, 1L))
+accuracy <- tf$reduce_mean(tf$cast(correct_prediction, tf$float32))
+
+# actually evaluate training accuracy
+sess$run(accuracy, feed_dict=dict(x = mnist$train$images, y_ = mnist$train$labels))
+# and test accuracy
+sess$run(accuracy, feed_dict=dict(x = mnist$test$images, y_ = mnist$test$labels))
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Hm. Accuracy's worse than with non-linear SVM...
+========================================================
+class:small-code
+
+&nbsp;
+  
+Bit disappointing right?
+
+Anything we can do?
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+  
+Getting in deeper: Deep Learning
+========================================================
+class:small-code
+
+&nbsp;
+  
+<figure>
+    <figcaption>Discerning features, a layer at a time</figcaption>
+    <img src='features.png' alt='missing' width='35%'/>
+    <figcaption style='font-size: 0.7em;'>Source: <a href='http://www.deeplearningbook.org/'>Goodfellow et al. 2016, Deep Learning</a></figcaption>
+</figure>
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Getting in deeper: Convnets (Convolutional Neural Networks)
+========================================================
+class:small-code
+
+&nbsp;
+  
+<figure>
+    <img src='convnet.jpeg' alt='missing' width='50%'/>
+    <figcaption style='font-size: 0.7em;'>Source: http://cs231n.github.io/convolutional-networks/</figcaption>
+</figure>
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 1: Convolution and ReLU (1)
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r, echo=FALSE}
+datasets_ <- tf$contrib$learn$datasets
+mnist <- datasets$mnist$read_data_sets("MNIST-data", one_hot = TRUE)
+# images are 55000 * 784
+x  <- tf$placeholder(tf$float32, shape(NULL, 784L))
+# labels are 55000 * 10
+y_ <- tf$placeholder(tf$float32, shape(NULL, 10L))
+```
+  
+```{r} 
+#  template to initialize weights with a small amount of noise for symmetry breaking and to prevent 0 gradients
+weight_variable <- function(shape) {
+  initial <- tf$truncated_normal(shape, stddev=0.1)
+  tf$Variable(initial)
+}
+#  template to initialize bias to small positive value to avoid "dead neurons" 
+bias_variable <- function(shape) {
+  initial <- tf$constant(0.1, shape=shape)
+  tf$Variable(initial)
+}
+
+# compute 32 feature maps for each 5x5 patch
+# we have just 1 channel
+# so weights shape is: height, width, number of input channels, number of output channels
+W_conv1 <- weight_variable(shape(5L, 5L, 1L, 32L))
+# shape for bias: number of output channels
+b_conv1 <- bias_variable(shape(32L))
+
+# reshape x from 2d to 4d tensor with dimensions batch size, width, height, number of color channels
+x_image <- tf$reshape(x, shape(-1L, 28L, 28L, 1L))
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 1: convolution and ReLU (2)
+========================================================
+class:small-code
+
+&nbsp;
+
+
+```{r} 
+# template to define convolutional layer
+# tf$nn$conv2d parameters: input tensor, kernel tensor, strides, padding
+# input tensor has shape [batch size, in_height, in_width, in_channels] (NHWC)
+# kernel tensor has shape [filter_height, filter_width, in_channels, out_channels]
+conv2d <- function(x, W) {
+  tf$nn$conv2d(x, W, strides=c(1L, 1L, 1L, 1L), padding='SAME')
+}
+# perform convolution and ReLU activation
+# output shape is batch size, 28, 28, 32
+h_conv1 <- tf$nn$relu(conv2d(x_image, W_conv1) + b_conv1)
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 2: Max pooling
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# template to define max pooling over 2x2 regions
+max_pool_2x2 <- function(x) {
+  tf$nn$max_pool(
+    x, 
+    ksize=c(1L, 2L, 2L, 1L),
+    strides=c(1L, 2L, 2L, 1L), 
+    padding='SAME')
+}
+
+# output shape is batch size , 14, 14, 32
+h_pool1 <- max_pool_2x2(h_conv1)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 3: convolution and ReLU 
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r} 
+# next feature map is 5*5, takes 32 channels, produces 64 channels - size weights accordingly
+W_conv2 <- weight_variable(shape = shape(5L, 5L, 32L, 64L))
+b_conv2 <- bias_variable(shape = shape(64L))
+# shape is ?, 14, 14, 64
+h_conv2 <- tf$nn$relu(conv2d(h_pool1, W_conv2) + b_conv2)
+```
+  
+
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+
+Layer 4: Max pooling
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# output shape is batch size, 7, 7, 64
+h_pool2 <- max_pool_2x2(h_conv2)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 5: Densely connected layer
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+# bring together all feature maps
+# weights shape: 3136, 1024 (fully connected)
+W_fc1 <- weight_variable(shape(7L * 7L * 64L, 1024L))
+b_fc1 <- bias_variable(shape(1024L))
+# reshape input: batch size, 3136
+h_pool2_flat <- tf$reshape(h_pool2, shape(-1L, 7L * 7L * 64L))
+
+# matrix multiply and ReLU
+# new shape: batch size, 1024
+h_fc1 <- tf$nn$relu(tf$matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+#dropout
+keep_prob <- tf$placeholder(tf$float32)
+# shape: ?, 1024
+h_fc1_drop <- tf$nn$dropout(h_fc1, keep_prob)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+Layer 5: Softmax
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+W_fc2 <- weight_variable(shape(1024L, 10L))
+b_fc2 <- bias_variable(shape(10L))
+# output shape: batch size, 10
+y_conv <- tf$nn$softmax(tf$matmul(h_fc1_drop, W_fc2) + b_fc2)
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+CNN: Define loss function and optimization algorithm
+========================================================
+class:small-code
+
+&nbsp;
+  
+```{r} 
+cross_entropy <- tf$reduce_mean(-tf$reduce_sum(y_ * tf$log(y_conv), reduction_indices=1L))
+train_step <- tf$train$AdamOptimizer(1e-4)$minimize(cross_entropy)
+correct_prediction <- tf$equal(tf$argmax(y_conv, 1L), tf$argmax(y_, 1L))
+accuracy <- tf$reduce_mean(tf$cast(correct_prediction, tf$float32))
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+ 
+CNN: Train network
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r, echo=FALSE} 
+sess = tf$InteractiveSession()
+sess$run(tf$initialize_all_variables())
+```
+
+```{r} 
+for (i in 1:2000) {
+  batch <- mnist$train$next_batch(50L)
+  if (i %% 250 == 0) {
+    train_accuracy <- accuracy$eval(feed_dict = dict(
+      x = batch[[1]], y_ = batch[[2]], keep_prob = 1.0))
+    cat(sprintf("step %d, training accuracy %g\n", i, train_accuracy))
+  }
+  train_step$run(feed_dict = dict(
+    x = batch[[1]], y_ = batch[[2]], keep_prob = 0.5), session=sess)
+}
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+ 
+CNN: Accuracy on test set
+========================================================
+class:small-code
+
+&nbsp;
+
+```{r} 
+test_accuracy <- accuracy$eval(feed_dict = dict(
+     x = mnist$test$images, y_ = mnist$test$labels, keep_prob = 1.0))
+cat(sprintf("test accuracy %g", train_accuracy))
+```
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+ 
+
+Now could play around with the configuration to get even higher accuracy ... 
+========================================================
+class:small-code
+
+&nbsp;
+  
+... but that will have to be another time ...
+
+Thanks for your attention!!
+
+<div class="footer">
+<img src='cube3.png' border=0 width='122px'>
+</div>
+
+ 

@@ -4,7 +4,7 @@ opts_chunk$set(cache=TRUE)
 <style>
 .small-code pre code {
   font-size: 1em;
-}
+} 
 .midcenter {
     position: fixed;
     top: 50%;
@@ -22,8 +22,6 @@ opts_chunk$set(cache=TRUE)
   box-shadow: 0 0 0 0;
 }
 </style> 
-
-
 
 3 - 2 - 1 - 0: Classifying Digits with R
 ========================================================
