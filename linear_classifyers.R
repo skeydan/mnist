@@ -7,25 +7,30 @@ library(dplyr)
 library(caret)
 library(kernlab)
 library(class)
+library(gridExtra)
 
 #######################################
 # Linearly separable data illustrated #
 #######################################
 
 
-# the separating hyperplane is: 2x + 5y -2 = 0
+# the separating hyperplane is: 2x + 5y -3 = 0
 
-x <- runif(10, min=0, max=1)
-y <- runif(10, min=0, max=1)
-z <- as_vector(map2(x, y, function(x,y) {2*x + 5*y - 2}))
+x <- runif(20, min=0, max=1)
+y <- runif(20, min=0, max=1)
+z <- as_vector(map2(x, y, function(x,y) {2*x + 5*y - 3}))
 # positive sign is one class, negative the other
 z_sgn <- sign(z)
+z_random <- sample(z_sgn)
 
-df <- data_frame(x,y,z,z_sgn)
-
-ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_sgn))) + 
-  geom_abline(slope=-0.4, intercept=0.4, linetype = 'dashed')
-
+df <- data_frame(x,y,z,z_sgn, z_random)
+df
+g1 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_sgn))) + 
+  geom_abline(slope=-0.4, intercept=0.6, linetype = 'dashed') +
+  coord_fixed() + theme (legend.position = "none") 
+g2 <- ggplot(df, aes(x,y)) + geom_point(aes(color=factor(z_random))) +
+  coord_fixed() + theme (legend.position = "none") 
+grid.arrange(g1,g2,ncol=2)
 
 #######################################
 #                Get data             #
